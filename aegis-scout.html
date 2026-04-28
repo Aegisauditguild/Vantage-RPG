@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VANTAGE — World Scout</title>
+<!-- PWA meta -->
+<meta name="theme-color" content="#050403">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VANTAGE">
+<meta name="application-name" content="VANTAGE">
+<link rel="manifest" id="pwa-manifest">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#c9a84c;--gold-b:#f0c040;--gold-d:#7a5e20;--gold-dd:#3a2e10;
+  --ember:#ff6b35;--teal:#00d4c8;--blue:#4488ff;
+  --panel:rgba(5,3,1,0.94);--text:#e8dcc8;--text-d:#7a6a50;--text-dd:#3a3020;
+  --gG:0 0 10px #c9a84c,0 0 30px #c9a84c55,0 0 60px #c9a84c22;
+  --gT:0 0 10px #00d4c8,0 0 28px #00d4c855;
+  --gB:0 0 12px #4488ff,0 0 32px #4488ff66;
+  --race-color:#c9a84c;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Rajdhani',sans-serif;color:var(--text);}
+
+/* ── CAMERA ── */
+#cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;background:radial-gradient(ellipse at 50% 60%,#0d1520 0%,#050a10 100%);}
+#atmos{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 100%,rgba(201,168,76,.07) 0%,transparent 55%),radial-gradient(ellipse at 0 50%,rgba(0,0,0,.5) 0%,transparent 40%),radial-gradient(ellipse at 100% 50%,rgba(0,0,0,.5) 0%,transparent 40%),radial-gradient(ellipse at 50% 0,rgba(0,0,0,.6) 0%,transparent 45%);}
+#scanlines{position:fixed;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.035) 2px,rgba(0,0,0,.035) 4px);animation:scanPan 14s linear infinite;}
+@keyframes scanPan{to{background-position:0 80px}}
+#tod-vignette{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:.4;}
+
+/* ── FRAME ── */
+#frame-svg{position:fixed;inset:0;z-index:6;pointer-events:none;width:100%;height:100%;}
+
+/* ── AR ── */
+#ar-layer{position:fixed;inset:0;z-index:10;pointer-events:none;}
+
+/* ── CROSSHAIR — glows blue on lock ── */
+#xhair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;width:90px;height:90px;}
+.xh{position:absolute;transition:background .3s;}
+.xh.h{height:1px;width:22px;top:50%;transform:translateY(-50%);}
+.xh.l{left:0;}.xh.r{right:0;}
+.xh.v{width:1px;height:22px;left:50%;transform:translateX(-50%);}
+.xh.t{top:0;}.xh.b{bottom:0;}
+.xh{background:rgba(201,168,76,.55);}
+#xhair.locked .xh{background:rgba(100,180,255,.9);}
+#xhair-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:var(--gold-b);border-radius:50%;box-shadow:var(--gG);transition:background .3s,box-shadow .3s;animation:xDot 2s ease-in-out infinite;}
+#xhair.locked #xhair-dot{background:#88ccff;box-shadow:var(--gB);}
+@keyframes xDot{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8}50%{transform:translate(-50%,-50%) scale(1.6);opacity:1}}
+#xhair-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:46px;height:46px;border:1px solid rgba(201,168,76,.2);border-radius:50%;transition:border-color .3s,box-shadow .3s;animation:xRing 3s ease-in-out infinite;}
+#xhair.locked #xhair-ring{border-color:rgba(100,180,255,.6);box-shadow:var(--gB);}
+@keyframes xRing{0%,100%{opacity:.35;transform:translate(-50%,-50%) scale(1)}50%{opacity:.7;transform:translate(-50%,-50%) scale(1.07)}}
+
+/* ── LOCK FLASH (rings from crosshair on lock) ── */
+.lock-ring{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(100,180,255,.8);pointer-events:none;z-index:35;animation:lockRingOut .8s ease-out forwards;}
+@keyframes lockRingOut{0%{width:20px;height:20px;opacity:1}100%{width:160px;height:160px;opacity:0;border-color:rgba(80,160,255,0)}}
+
+/* ── CD ORB (scan sweep) ── */
+#cd-orb{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:40;pointer-events:none;display:none;width:80px;height:80px;}
+#cd-orb.active{display:block;}
+.orb-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:radial-gradient(circle,#fff 0%,#a0d8ff 40%,#4488ff 100%);box-shadow:0 0 20px #4488ff,0 0 50px #4488ffaa;animation:orbPulse .55s ease-in-out infinite alternate;}
+@keyframes orbPulse{0%{transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-50%) scale(1.35)}}
+.orb-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(100,180,255,.8);animation:orbRingOut 1.4s ease-out forwards;}
+.orb-ring:nth-child(2){animation-delay:.0s}.orb-ring:nth-child(3){animation-delay:.22s}.orb-ring:nth-child(4){animation-delay:.44s}.orb-ring:nth-child(5){animation-delay:.66s}
+@keyframes orbRingOut{0%{width:10px;height:10px;opacity:.9;border-color:rgba(120,200,255,.9)}100%{width:320px;height:320px;opacity:0;border-color:rgba(80,160,255,0)}}
+.orb-sweep{position:fixed;left:0;right:0;z-index:39;pointer-events:none;height:2px;background:linear-gradient(90deg,transparent,rgba(100,180,255,.6),rgba(180,220,255,.9),rgba(100,180,255,.6),transparent);box-shadow:0 0 10px rgba(100,180,255,.5),0 0 30px rgba(100,180,255,.3);animation:sweepDown 1.2s ease-in-out forwards;}
+@keyframes sweepDown{0%{top:0;opacity:0}10%{opacity:1}100%{top:100vh;opacity:0}}
+#radar-sweep{position:fixed;inset:0;z-index:8;pointer-events:none;display:none;}
+#radar-sweep.active{display:block;animation:radarOut 1.8s ease-out forwards;}
+@keyframes radarOut{0%{box-shadow:inset 0 0 0 0 rgba(100,180,255,.45);opacity:1}100%{box-shadow:inset 0 0 140px 80px rgba(100,180,255,0);opacity:0}}
+
+/* ── POI MARKERS ── */
+.poi-marker{position:absolute;transform:translate(-50%,-50%);pointer-events:all;cursor:pointer;z-index:20;opacity:0;transition:opacity .35s ease,transform .12s ease;}
+.m-ring{position:relative;width:62px;height:62px;display:flex;align-items:center;justify-content:center;}
+.m-ring::before{content:'';position:absolute;inset:0;border:2px solid var(--race-color);border-radius:50%;box-shadow:0 0 10px var(--race-color),0 0 28px color-mix(in srgb,var(--race-color) 35%,transparent);animation:rPulse 2.4s ease-in-out infinite;}
+.m-ring::after{content:'';position:absolute;inset:-10px;border:1px solid color-mix(in srgb,var(--race-color) 22%,transparent);border-radius:50%;animation:rPulse 2.4s ease-in-out infinite .5s;}
+@keyframes rPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
+.m-core{width:13px;height:13px;background:var(--race-color);border-radius:50%;box-shadow:0 0 8px var(--race-color),0 0 20px var(--race-color);animation:cPulse 1.8s ease-in-out infinite;}
+@keyframes cPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.4)}}
+.m-icon{position:absolute;font-size:18px;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;}
+.m-label{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.11em;color:var(--race-color);text-shadow:0 0 8px var(--race-color);background:rgba(5,3,1,.9);border:1px solid color-mix(in srgb,var(--race-color) 45%,transparent);padding:3px 9px 2px;clip-path:polygon(6px 0%,calc(100% - 6px) 0%,100% 50%,calc(100% - 6px) 100%,6px 100%,0% 50%);}
+.m-dist{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--teal);text-shadow:var(--gT);white-space:nowrap;letter-spacing:.06em;}
+/* locked marker pulses blue */
+.poi-marker.centre-locked .m-ring::before{border-color:#88ccff;box-shadow:0 0 14px #88ccff,0 0 40px #4488ff88;animation:rPulseLock 1s ease-in-out infinite;}
+@keyframes rPulseLock{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+
+/* ── EDGE ARROWS ── */
+.edge-arrow{position:fixed;z-index:25;pointer-events:all;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ea-icon{font-size:22px;color:var(--gold-b);text-shadow:var(--gG);}
+.edge-arrow.left .ea-icon{animation:eaL 1.3s ease-in-out infinite;}
+.edge-arrow.right .ea-icon{animation:eaR 1.3s ease-in-out infinite;}
+@keyframes eaL{0%,100%{transform:translateX(0)}50%{transform:translateX(-3px)}}
+@keyframes eaR{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+.ea-label{font-size:9px;font-family:'Cinzel',serif;color:var(--gold);letter-spacing:.08em;background:rgba(5,3,1,.88);padding:2px 7px;border:1px solid rgba(201,168,76,.3);}
+
+/* ── TOP HUD ── */
+#top-hud{position:fixed;top:0;left:0;right:0;z-index:30;padding:10px 54px 0 14px;display:flex;align-items:center;gap:10px;background:linear-gradient(to bottom,rgba(0,0,0,.85) 0%,transparent 100%);}
+#logo{font-family:'Cinzel Decorative',serif;font-size:15px;color:var(--gold-b);text-shadow:var(--gG);letter-spacing:.15em;white-space:nowrap;flex-shrink:0;}
+#search-wrap{flex:1;display:flex;align-items:center;gap:8px;background:rgba(5,3,1,.9);border-top:1px solid rgba(201,168,76,.5);border-bottom:1px solid rgba(201,168,76,.5);border-left:3px solid var(--gold);border-right:3px solid var(--gold);padding:6px 12px;clip-path:polygon(8px 0%,calc(100% - 8px) 0%,100% 50%,calc(100% - 8px) 100%,8px 100%,0% 50%);}
+#search-icon{color:var(--gold-d);font-size:13px;flex-shrink:0;}
+#search-input{flex:1;background:none;border:none;outline:none;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:.06em;min-width:0;}
+#search-input::placeholder{color:var(--text-dd);}
+#scan-btn{background:linear-gradient(135deg,#c9a84c,#7a5010);border:none;color:#050200;font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.1em;padding:8px 12px;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);cursor:pointer;white-space:nowrap;flex-shrink:0;box-shadow:0 0 14px rgba(201,168,76,.4);transition:filter .15s;}
+#scan-btn:active{filter:brightness(1.3);}
+#scan-btn.scanning{background:linear-gradient(135deg,#4488ff,#002288);color:#fff;animation:btnPulse .7s ease-in-out infinite;}
+@keyframes btnPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ── COMPASS ── */
+#compass-wrap{position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;width:260px;}
+#compass-track{overflow:hidden;height:26px;position:relative;}
+#compass-tape{display:flex;position:absolute;top:0;left:50%;white-space:nowrap;height:100%;align-items:center;transition:transform .1s linear;}
+.c-tick{width:26px;text-align:center;font-size:9px;font-weight:700;color:var(--text-dd);flex-shrink:0;}
+.c-tick.card{color:var(--gold);font-size:12px;font-family:'Cinzel',serif;}
+#c-needle{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:100%;background:var(--gold-b);box-shadow:var(--gG);}
+#c-needle::after{content:'▼';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--gold-b);}
+.c-bar{height:1px;background:linear-gradient(90deg,transparent,var(--gold-d),var(--gold),var(--gold-d),transparent);margin:2px 0;}
+#heading-txt{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;color:var(--gold);text-align:center;margin-top:1px;text-shadow:0 0 8px rgba(201,168,76,.5);}
+
+/* ── LOCK BANNER (appears when orb centred) ── */
+#lock-banner{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,40px);
+  z-index:35;pointer-events:none;
+  background:rgba(5,3,1,.92);
+  border:1px solid rgba(100,180,255,.6);
+  box-shadow:0 0 20px rgba(68,136,255,.3);
+  padding:10px 18px;
+  text-align:center;
+  clip-path:polygon(10px 0%,calc(100% - 10px) 0%,100% 50%,calc(100% - 10px) 100%,10px 100%,0% 50%);
+  min-width:220px;
+  opacity:0;transition:opacity .3s;
+}
+#lock-banner.show{opacity:1;}
+#lb-name{font-family:'Cinzel',serif;font-size:13px;color:#88ccff;letter-spacing:.1em;text-shadow:var(--gB);margin-bottom:3px;}
+#lb-type{font-family:'IM Fell English',serif;font-size:11px;font-style:italic;color:var(--text-d);}
+#lb-dist{font-size:11px;color:var(--teal);letter-spacing:.06em;font-weight:600;margin-top:2px;}
+#lb-tap{font-size:9px;color:rgba(100,180,255,.6);letter-spacing:.12em;margin-top:4px;font-family:'Cinzel',serif;animation:tapBlink 1.5s ease-in-out infinite;}
+@keyframes tapBlink{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── AVATAR PANEL ── */
+#avatar-panel{position:fixed;bottom:20px;left:12px;z-index:30;display:flex;align-items:flex-end;gap:0;}
+#avatar-portrait{width:56px;height:68px;background:rgba(5,3,1,.9);border:1px solid rgba(201,168,76,.4);border-right:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);position:relative;}
+#avatar-portrait:hover{border-color:rgba(201,168,76,.8);}
+.avatar-hint{position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:8px;font-family:'Cinzel',serif;color:var(--gold);background:rgba(5,3,1,.9);border:1px solid rgba(201,168,76,.3);padding:2px 6px;opacity:0;transition:opacity .2s;pointer-events:none;}
+#avatar-portrait:hover .avatar-hint{opacity:1;}
+#avatar-emoji{font-size:26px;line-height:1;}
+#avatar-race{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.12em;color:var(--gold-d);}
+#avatar-stats{background:rgba(5,3,1,.88);border:1px solid rgba(201,168,76,.35);padding:6px 10px 6px 8px;clip-path:polygon(0 0,100% 0,100% 100%,10px 100%,0 calc(100% - 10px));}
+#avatar-name{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;color:var(--gold-b);margin-bottom:4px;}
+.ast{font-size:9px;color:var(--text-dd);letter-spacing:.04em;line-height:1.8;}.ast span{color:var(--teal);}
+#avatar-affinity{font-family:'IM Fell English',serif;font-size:9px;font-style:italic;color:var(--gold-d);margin-top:3px;max-width:120px;line-height:1.3;}
+
+/* ── STATUS ── */
+#status-wrap{position:fixed;bottom:20px;right:12px;z-index:30;text-align:right;}
+#poi-count{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--gold-d);line-height:1.8;}.poi-count span{color:var(--gold-b);font-size:13px;}
+#status-line{font-family:'IM Fell English',serif;font-size:12px;font-style:italic;color:var(--text-d);max-width:180px;line-height:1.4;}
+
+/* ── MUSIC BUTTON ── */
+#music-btn{position:fixed;top:10px;right:14px;z-index:40;background:rgba(5,3,1,.9);border:1px solid rgba(201,168,76,.4);color:var(--gold);font-size:16px;width:36px;height:36px;border-radius:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#music-btn.playing{border-color:var(--gold-b);box-shadow:var(--gG);}
+
+/* ── DETAIL CARD (full info) ── */
+#detail-card{position:fixed;bottom:100px;left:10px;right:10px;z-index:55;background:var(--panel);border:1px solid rgba(201,168,76,.5);display:none;animation:cardSlide .22s ease-out;box-shadow:0 0 40px rgba(201,168,76,.1);}
+@keyframes cardSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+#detail-card.show{display:block;}
+.card-header{background:linear-gradient(90deg,transparent,rgba(201,168,76,.07),transparent);border-bottom:1px solid rgba(201,168,76,.25);padding:10px 14px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.card-eyebrow{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.2em;color:var(--gold-d);margin-bottom:2px;}
+#card-name{font-family:'Cinzel Decorative',serif;font-size:15px;color:var(--gold-b);text-shadow:0 0 10px rgba(201,168,76,.4);line-height:1.2;}
+#dc-close{background:none;border:none;color:var(--gold-d);font-size:18px;cursor:pointer;flex-shrink:0;padding:0 2px;}
+.card-stats{display:flex;border-bottom:1px solid rgba(201,168,76,.1);}
+.cs{flex:1;padding:7px 6px;text-align:center;border-right:1px solid rgba(201,168,76,.1);font-family:'Cinzel',serif;}
+.cs:last-child{border-right:none;}
+.cs-label{font-size:8px;letter-spacing:.12em;color:var(--text-dd);margin-bottom:2px;}
+.cs-val{font-size:12px;font-weight:700;}
+.cs-val.dist{color:var(--teal);text-shadow:var(--gT);}
+.cs-val.dir{color:var(--gold);}
+.cs-val.type{color:#a0c4ff;}
+.card-body{padding:9px 14px 12px;}
+#card-address{font-size:12px;color:var(--text-d);margin-bottom:6px;letter-spacing:.03em;}
+#card-desc{font-family:'IM Fell English',serif;font-size:13px;color:var(--text-d);line-height:1.55;margin-bottom:6px;}
+#card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.tag{font-size:9px;letter-spacing:.1em;border:1px solid rgba(201,168,76,.25);color:var(--gold-d);padding:2px 7px;font-family:'Cinzel',serif;clip-path:polygon(4px 0%,calc(100% - 4px) 0%,100% 50%,calc(100% - 4px) 100%,4px 100%,0% 50%);}
+#card-osm-link{display:inline-block;margin-top:10px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.1em;color:var(--teal);border:1px solid rgba(0,212,200,.3);padding:4px 12px;text-decoration:none;clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);}
+.rune-corner{position:absolute;font-size:11px;color:var(--gold-d);opacity:.4;font-family:'Cinzel',serif;}
+.rc-tl{top:4px;left:6px;}.rc-tr{top:4px;right:6px;}.rc-bl{bottom:4px;left:6px;}.rc-br{bottom:4px;right:6px;}
+
+/* ── AVATAR MODAL ── */
+#avatar-modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:16px;}
+#avatar-modal.open{display:flex;}
+#avatar-modal-inner{background:var(--panel);border:1px solid rgba(201,168,76,.5);max-width:400px;width:100%;}
+.modal-header{background:linear-gradient(90deg,transparent,rgba(201,168,76,.08),transparent);border-bottom:1px solid rgba(201,168,76,.3);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
+.modal-title{font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--gold-b);letter-spacing:.12em;}
+#modal-close{background:none;border:none;color:var(--gold-d);font-size:18px;cursor:pointer;}
+#avatar-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px;}
+.av-card{background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.2);padding:12px 10px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);position:relative;}
+.av-card:hover,.av-card.selected{background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.6);}
+.av-card.selected::after{content:'✓';position:absolute;top:5px;right:7px;font-size:10px;color:var(--gold);}
+.av-emoji{font-size:30px;}.av-name{font-family:'Cinzel',serif;font-size:11px;color:var(--gold);letter-spacing:.1em;}
+.av-sub{font-family:'IM Fell English',serif;font-size:10px;font-style:italic;color:var(--text-dd);text-align:center;line-height:1.3;}
+.av-affinity{font-size:9px;color:var(--teal);letter-spacing:.06em;font-family:'Cinzel',serif;}
+
+/* ── PERMISSION SCREEN ── */
+#perm-screen{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse at 50% 60%,#0d0a04 0%,#030201 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center;overflow:hidden;}
+#perm-screen::before{content:'ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛞ ᛟ';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:.5em;color:rgba(201,168,76,.07);line-height:2;word-break:break-all;padding:20px;animation:runeShimmer 8s ease-in-out infinite alternate;}
+@keyframes runeShimmer{0%{opacity:.4}100%{opacity:1}}
+.perm-orb{font-size:58px;margin-bottom:12px;filter:drop-shadow(0 0 20px #c9a84c);animation:orbFloat 3.5s ease-in-out infinite;position:relative;z-index:1;}
+@keyframes orbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.perm-title{font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--gold-b);text-shadow:var(--gG);letter-spacing:.18em;margin-bottom:3px;position:relative;z-index:1;}
+.perm-subtitle{font-family:'IM Fell English',serif;font-size:12px;font-style:italic;color:var(--text-dd);margin-bottom:4px;position:relative;z-index:1;}
+.perm-divider{width:150px;height:1px;margin:10px auto;background:linear-gradient(90deg,transparent,var(--gold-d),transparent);position:relative;z-index:1;}
+.perm-copy{font-size:12px;color:var(--text-d);line-height:1.6;margin-bottom:14px;max-width:290px;font-family:'IM Fell English',serif;position:relative;z-index:1;}
+#perm-avatar-row{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;max-width:340px;}
+.perm-av{width:50px;height:58px;background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:all .15s;clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%);}
+.perm-av:hover,.perm-av.sel{background:rgba(201,168,76,.14);border-color:rgba(201,168,76,.7);}
+.perm-av .e{font-size:20px;}.perm-av .n{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.08em;color:var(--gold-d);}
+.perm-btn{background:linear-gradient(135deg,#c9a84c 0%,#7a5010 100%);border:none;color:#050200;font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:.14em;padding:13px 24px;clip-path:polygon(10px 0%,calc(100% - 10px) 0%,100% 50%,calc(100% - 10px) 100%,10px 100%,0% 50%);cursor:pointer;width:100%;max-width:270px;margin-bottom:8px;box-shadow:0 0 24px rgba(201,168,76,.35);transition:filter .2s;position:relative;z-index:1;}
+.perm-btn:active{filter:brightness(1.3);}
+.perm-btn.sec{background:transparent;border:1px solid rgba(201,168,76,.3);color:var(--gold-d);font-size:10px;padding:9px 20px;box-shadow:none;clip-path:none;}
+.perm-note{font-size:9px;color:var(--text-dd);margin-top:10px;max-width:250px;position:relative;z-index:1;}
+#demo-banner{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:40;display:none;background:rgba(139,26,0,.2);border:1px solid rgba(255,107,53,.35);color:var(--ember);font-size:10px;letter-spacing:.1em;padding:4px 14px;font-family:'Cinzel',serif;white-space:nowrap;}
+#demo-banner.show{display:block;}
+
+/* ── LOADING INDICATOR ── */
+#loading-bar{position:fixed;top:0;left:0;right:0;height:2px;z-index:60;background:linear-gradient(90deg,transparent,#4488ff,#88ccff,#4488ff,transparent);display:none;animation:loadSlide 1.2s ease-in-out infinite;}
+@keyframes loadSlide{0%{background-position:-100% 0}100%{background-position:200% 0}}
+#loading-bar.show{display:block;}
+
+/* ── RUNE PARTICLES ── */
+.rune-particle{position:fixed;z-index:3;pointer-events:none;font-family:'Cinzel',serif;font-size:10px;color:rgba(201,168,76,.1);animation:runeDrift linear infinite;}
+@keyframes runeDrift{0%{transform:translateY(100vh) rotate(0deg);opacity:0}10%{opacity:1}90%{opacity:.2}100%{transform:translateY(-60px) rotate(360deg);opacity:0}}
+
+/* ── PWA INSTALL BANNER ── */
+#install-banner{
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:rgba(5,3,1,.97);
+  border-top:1px solid rgba(201,168,76,.5);
+  padding:14px 18px 28px;
+  display:none;
+  flex-direction:column;
+  gap:10px;
+  box-shadow:0 -4px 30px rgba(201,168,76,.15);
+  animation:bannerSlide .3s ease-out;
+}
+@keyframes bannerSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#install-banner.show{display:flex;}
+.ib-row{display:flex;align-items:center;gap:12px;}
+.ib-icon{font-size:32px;flex-shrink:0;filter:drop-shadow(0 0 8px #c9a84c);}
+.ib-text{flex:1;}
+.ib-title{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--gold-b);letter-spacing:.1em;text-shadow:var(--gG);margin-bottom:2px;}
+.ib-sub{font-family:'IM Fell English',serif;font-size:11px;font-style:italic;color:var(--text-d);}
+.ib-btns{display:flex;gap:10px;}
+#install-btn{
+  flex:1;background:linear-gradient(135deg,#c9a84c,#7a5010);
+  border:none;color:#050200;font-family:'Cinzel',serif;
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  padding:11px 16px;cursor:pointer;
+  clip-path:polygon(8px 0%,calc(100% - 8px) 0%,100% 50%,calc(100% - 8px) 100%,8px 100%,0% 50%);
+  box-shadow:0 0 18px rgba(201,168,76,.35);
+}
+#install-dismiss{
+  background:transparent;border:1px solid rgba(201,168,76,.25);
+  color:var(--gold-d);font-family:'Cinzel',serif;font-size:10px;
+  letter-spacing:.1em;padding:11px 14px;cursor:pointer;
+  clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
+}
+</style>
+</head>
+<body>
+
+<video id="cam" autoplay playsinline muted></video>
+<div id="atmos"></div>
+<div id="tod-vignette"></div>
+<div id="scanlines"></div>
+<div id="radar-sweep"></div>
+<div id="loading-bar"></div>
+
+<svg id="frame-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+  <defs><filter id="gf"><feGaussianBlur stdDeviation="0.25" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <g stroke="rgba(201,168,76,0.45)" stroke-width="0.2" fill="none" filter="url(#gf)">
+    <polyline points="0,11 0,0 11,0"/><polyline points="0,15 0,0 15,0"/>
+    <polyline points="100,11 100,0 89,0"/><polyline points="100,15 100,0 85,0"/>
+    <polyline points="0,89 0,100 11,100"/><polyline points="0,85 0,100 15,100"/>
+    <polyline points="100,89 100,100 89,100"/><polyline points="100,85 100,100 85,100"/>
+  </g>
+  <g stroke="rgba(201,168,76,0.12)" stroke-width="0.12">
+    <line x1="0" y1="30" x2="2.5" y2="30"/><line x1="0" y1="50" x2="3.5" y2="50"/><line x1="0" y1="70" x2="2.5" y2="70"/>
+    <line x1="100" y1="30" x2="97.5" y2="30"/><line x1="100" y1="50" x2="96.5" y2="50"/><line x1="100" y1="70" x2="97.5" y2="70"/>
+  </g>
+</svg>
+
+<div id="ar-layer"></div>
+
+<div id="xhair">
+  <div class="xh h l"></div><div class="xh h r"></div>
+  <div class="xh v t"></div><div class="xh v b"></div>
+  <div id="xhair-ring"></div><div id="xhair-dot"></div>
+</div>
+
+<div id="cd-orb">
+  <div class="orb-core"></div>
+  <div class="orb-ring"></div><div class="orb-ring"></div>
+  <div class="orb-ring"></div><div class="orb-ring"></div>
+</div>
+
+<!-- Lock banner — shows when marker centred -->
+<div id="lock-banner">
+  <div id="lb-name">—</div>
+  <div id="lb-type">—</div>
+  <div id="lb-dist">—</div>
+  <div id="lb-tap">◈ TAP MARKER FOR FULL DETAILS ◈</div>
+</div>
+
+<div id="demo-banner">◈ DEMO MODE — no live data, simulated compass</div>
+<button id="music-btn" title="Toggle music">♪</button>
+
+<div id="top-hud">
+  <div id="logo">VANTAGE</div>
+  <div id="search-wrap">
+    <span id="search-icon">⚔</span>
+    <input id="search-input" type="text" placeholder="pubs · castles · coffee · mountains…" autocomplete="off" autocorrect="off" spellcheck="false">
+  </div>
+  <button id="scan-btn">SCAN</button>
+</div>
+
+<div id="compass-wrap">
+  <div class="c-bar"></div>
+  <div id="compass-track"><div id="compass-tape"></div><div id="c-needle"></div></div>
+  <div class="c-bar"></div>
+  <div id="heading-txt">000° N</div>
+</div>
+
+<div id="avatar-panel">
+  <div id="avatar-portrait" onclick="openAvatarModal()">
+    <div class="avatar-hint">Change Race</div>
+    <div id="avatar-emoji">⚔️</div>
+    <div id="avatar-race">HUMAN</div>
+  </div>
+  <div id="avatar-stats">
+    <div id="avatar-name">WAYFARER</div>
+    <div class="ast">NEARBY&nbsp;<span id="poi-num">0</span></div>
+    <div class="ast">BEARING&nbsp;<span id="hdg-stat">---°</span></div>
+    <div id="avatar-affinity">Versatile. Unpredictable.</div>
+  </div>
+</div>
+
+<div id="status-wrap">
+  <div id="poi-count">FOUND <span id="disc-num">0</span></div>
+  <div id="status-line">Awaiting command…</div>
+</div>
+
+<div id="detail-card">
+  <span class="rune-corner rc-tl">ᚠ</span><span class="rune-corner rc-tr">ᚢ</span>
+  <span class="rune-corner rc-bl">ᛟ</span><span class="rune-corner rc-br">ᛞ</span>
+  <div class="card-header">
+    <div><div class="card-eyebrow">POINT OF INTEREST</div><div id="card-name">—</div></div>
+    <button id="dc-close">✕</button>
+  </div>
+  <div class="card-stats">
+    <div class="cs"><div class="cs-label">DISTANCE</div><div class="cs-val dist" id="card-dist">—</div></div>
+    <div class="cs"><div class="cs-label">BEARING</div><div class="cs-val dir" id="card-dir">—</div></div>
+    <div class="cs"><div class="cs-label">TYPE</div><div class="cs-val type" id="card-type">—</div></div>
+  </div>
+  <div class="card-body">
+    <div id="card-address"></div>
+    <div id="card-desc"></div>
+    <div id="card-tags"></div>
+    <a id="card-osm-link" href="#" target="_blank">◈ VIEW ON OPENSTREETMAP</a>
+  </div>
+</div>
+
+<div id="avatar-modal">
+  <div id="avatar-modal-inner">
+    <div class="modal-header">
+      <div class="modal-title">CHOOSE YOUR RACE</div>
+      <button id="modal-close" onclick="closeAvatarModal()">✕</button>
+    </div>
+    <div id="avatar-grid"></div>
+  </div>
+</div>
+
+<!-- PWA INSTALL BANNER -->
+<div id="install-banner">
+  <div class="ib-row">
+    <div class="ib-icon">🔮</div>
+    <div class="ib-text">
+      <div class="ib-title">VANTAGE — World Scout</div>
+      <div class="ib-sub">Install as an app — opens instantly from your home screen, no browser needed</div>
+    </div>
+  </div>
+  <div class="ib-btns">
+    <button id="install-btn">⚔ ADD TO HOME SCREEN</button>
+    <button id="install-dismiss">NOT NOW</button>
+  </div>
+</div>
+
+<div id="perm-screen">
+  <div class="perm-orb">🔮</div>
+  <div class="perm-title">VANTAGE</div>
+  <div class="perm-subtitle">World Scout · Live Edition</div>
+  <div class="perm-divider"></div>
+  <div class="perm-copy">Choose your lineage. Then grant access to your sight and position — real places of the world shall be revealed before you.</div>
+  <div id="perm-avatar-row"></div>
+  <button class="perm-btn" id="perm-go">⚔ GRANT ACCESS &amp; ENTER</button>
+  <button class="perm-btn sec" id="perm-demo">Demo Mode (no camera / no location)</button>
+  <div class="perm-note">Camera and location are used locally only. No data is stored or transmitted to us.</div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+//  RACE DATA
+// ═══════════════════════════════════════════════
+const RACES = [
+  { id:'dwarf',   emoji:'🪨', name:'Dwarf',   title:'Stonewarden', color:'#e8943c',
+    affinity:'Ale & stonework', affinityLine:'Nose twitches near a good taproom.',
+    greetings:['By Durin\'s beard…','*sniffs* Ale nearby, aye?','Ahh, the scent of oak barrels.'],
+    osmPrefer:['pub','bar','brewery','tavern'], searchHints:'pubs · inns · breweries · taverns' },
+  { id:'elf',     emoji:'🌿', name:'Elf',     title:'Silvaneth',   color:'#55cc88',
+    affinity:'Nature & ancient lore', affinityLine:'Drawn to old trees and still water.',
+    greetings:['The wind whispers of old paths…','Ancient energies stir here…','I sense the ley lines shifting.'],
+    osmPrefer:['peak','hill','viewpoint','nature_reserve','waterfall','spring'], searchHints:'mountains · viewpoints · lakes · nature' },
+  { id:'orc',     emoji:'💀', name:'Orc',     title:'Ironjaw',     color:'#66bb33',
+    affinity:'Bustle & conquest', affinityLine:'Drawn to commerce, noise, and conflict.',
+    greetings:['Ugh. What moves?','Orc smells opportunity…','WHERE. IS. THE. FIGHT.'],
+    osmPrefer:['marketplace','stadium','sports_centre','food_court'], searchHints:'markets · stadiums · sports centres' },
+  { id:'human',   emoji:'⚔️', name:'Human',   title:'Wayfarer',    color:'#c9a84c',
+    affinity:'All things in measure', affinityLine:'Versatile. Unpredictable. Tenacious.',
+    greetings:['Let\'s see what\'s out there…','Ready for anything.','Onward, then.'],
+    osmPrefer:[], searchHints:'pubs · castles · coffee · mountains · churches' },
+  { id:'cleric',  emoji:'⛪', name:'Cleric',  title:'Dawnkeeper',  color:'#f0e060',
+    affinity:'Sacred & ancient sites', affinityLine:'Pilgrimage to ruins and hallowed ground.',
+    greetings:['I sense consecrated ground nearby…','The divine guides my path…','Ancient stones hold old power.'],
+    osmPrefer:['castle','church','cathedral','abbey','monastery','ruins','archaeological_site'], searchHints:'castles · churches · abbeys · ruins · cathedrals' },
+  { id:'ranger',  emoji:'🏹', name:'Ranger',  title:'Wildstrider', color:'#88aaff',
+    affinity:'Peaks & wild places', affinityLine:'Finds rest only under open sky.',
+    greetings:['I\'ll take the high ground.','Track first. Move second.','Good sight lines here.'],
+    osmPrefer:['peak','viewpoint','camp_site','wilderness_hut','mountain_pass'], searchHints:'mountains · peaks · viewpoints · campsites' },
+  { id:'witch',   emoji:'🔮', name:'Witch',   title:'Veilwalker',  color:'#cc66ff',
+    affinity:'Ley lines & mystery', affinityLine:'Sees through the veil between worlds.',
+    greetings:['The aether trembles here…','Power radiates from beyond the veil…','*casts*'],
+    osmPrefer:['ruins','archaeological_site','stone','memorial','wayside_shrine'], searchHints:'ruins · standing stones · ancient sites · shrines' },
+  { id:'bard',    emoji:'🎵', name:'Bard',    title:'Songweaver',  color:'#ff88bb',
+    affinity:'Culture & performance', affinityLine:'Any stage, any crowd, any coin.',
+    greetings:['A tale for every road!','Who has a coin for a song?','*strums lute absently*'],
+    osmPrefer:['cafe','restaurant','pub','theatre','arts_centre','music_venue'], searchHints:'cafes · pubs · restaurants · theatres · music' },
+];
+
+// ═══════════════════════════════════════════════
+//  OSM CATEGORY MAP (search term → Overpass query fragment)
+// ═══════════════════════════════════════════════
+const OSM_QUERIES = {
+  pub:        `node["amenity"~"pub|bar|biergarten"](around:{R},{LAT},{LON});`,
+  pubs:       `node["amenity"~"pub|bar|biergarten"](around:{R},{LAT},{LON});`,
+  bar:        `node["amenity"~"pub|bar"](around:{R},{LAT},{LON});`,
+  tavern:     `node["amenity"~"pub|bar"](around:{R},{LAT},{LON});`,
+  inn:        `node["amenity"~"pub|bar"](around:{R},{LAT},{LON});`,
+  ale:        `node["amenity"~"pub|bar"](around:{R},{LAT},{LON});`,
+  beer:       `node["amenity"~"pub|bar"](around:{R},{LAT},{LON});`,
+  brewery:    `node["craft"="brewery"](around:{R},{LAT},{LON});`,
+  coffee:     `node["amenity"="cafe"](around:{R},{LAT},{LON});`,
+  cafe:       `node["amenity"="cafe"](around:{R},{LAT},{LON});`,
+  cafes:      `node["amenity"="cafe"](around:{R},{LAT},{LON});`,
+  restaurant: `node["amenity"="restaurant"](around:{R},{LAT},{LON});`,
+  food:       `node["amenity"~"restaurant|cafe|fast_food"](around:{R},{LAT},{LON});`,
+  castle:     `node["historic"~"castle|fort|fortification"](around:{R},{LAT},{LON});way["historic"~"castle|fort"](around:{R},{LAT},{LON});`,
+  castles:    `node["historic"~"castle|fort|fortification"](around:{R},{LAT},{LON});way["historic"~"castle|fort"](around:{R},{LAT},{LON});`,
+  church:     `node["amenity"~"place_of_worship"](around:{R},{LAT},{LON});way["historic"~"church|abbey|monastery"](around:{R},{LAT},{LON});`,
+  churches:   `node["amenity"="place_of_worship"](around:{R},{LAT},{LON});`,
+  cathedral:  `node["amenity"="place_of_worship"]["building"="cathedral"](around:{R},{LAT},{LON});`,
+  abbey:      `node["historic"~"abbey|monastery"](around:{R},{LAT},{LON});way["historic"~"abbey|monastery"](around:{R},{LAT},{LON});`,
+  ruin:       `node["historic"~"ruins|archaeological_site|roman_road"](around:{R},{LAT},{LON});way["historic"="ruins"](around:{R},{LAT},{LON});`,
+  ruins:      `node["historic"~"ruins|archaeological_site"](around:{R},{LAT},{LON});way["historic"="ruins"](around:{R},{LAT},{LON});`,
+  mountain:   `node["natural"="peak"](around:{R},{LAT},{LON});`,
+  mountains:  `node["natural"="peak"](around:{R},{LAT},{LON});`,
+  peak:       `node["natural"="peak"](around:{R},{LAT},{LON});`,
+  peaks:      `node["natural"="peak"](around:{R},{LAT},{LON});`,
+  hill:       `node["natural"~"peak|hill"](around:{R},{LAT},{LON});`,
+  hills:      `node["natural"~"peak|hill"](around:{R},{LAT},{LON});`,
+  viewpoint:  `node["tourism"="viewpoint"](around:{R},{LAT},{LON});`,
+  viewpoints: `node["tourism"="viewpoint"](around:{R},{LAT},{LON});`,
+  lake:       `way["natural"="water"]["water"~"lake|reservoir"](around:{R},{LAT},{LON});node["natural"="water"](around:{R},{LAT},{LON});`,
+  lakes:      `way["natural"="water"]["water"~"lake|reservoir"](around:{R},{LAT},{LON});`,
+  reservoir:  `way["natural"="water"]["water"="reservoir"](around:{R},{LAT},{LON});`,
+  museum:     `node["tourism"="museum"](around:{R},{LAT},{LON});`,
+  museums:    `node["tourism"="museum"](around:{R},{LAT},{LON});`,
+  historic:   `node["historic"](around:{R},{LAT},{LON});way["historic"](around:{R},{LAT},{LON});`,
+  monument:   `node["historic"~"monument|memorial"](around:{R},{LAT},{LON});`,
+  statue:     `node["historic"~"monument|memorial"](around:{R},{LAT},{LON});`,
+  shop:       `node["shop"](around:{R},{LAT},{LON});`,
+  pharmacy:   `node["amenity"="pharmacy"](around:{R},{LAT},{LON});`,
+  hospital:   `node["amenity"="hospital"](around:{R},{LAT},{LON});`,
+  park:       `way["leisure"="park"](around:{R},{LAT},{LON});node["leisure"="park"](around:{R},{LAT},{LON});`,
+  campsite:   `node["tourism"="camp_site"](around:{R},{LAT},{LON});`,
+  hotel:      `node["tourism"="hotel"](around:{R},{LAT},{LON});`,
+  theatre:    `node["amenity"~"theatre|arts_centre"](around:{R},{LAT},{LON});`,
+  market:     `node["amenity"="marketplace"](around:{R},{LAT},{LON});`,
+};
+
+// ═══════════════════════════════════════════════
+//  POI TYPE → icon + label
+// ═══════════════════════════════════════════════
+function poiMeta(tags){
+  const a=tags.amenity||'', h=tags.historic||'', t=tags.tourism||'', n=tags.natural||'', l=tags.leisure||'', c=tags.craft||'';
+  if(a==='pub'||a==='bar'||a==='biergarten') return {icon:'🍺',label:'Tavern'};
+  if(a==='cafe') return {icon:'☕',label:'Coffee House'};
+  if(a==='restaurant') return {icon:'🍽️',label:'Alehouse & Kitchen'};
+  if(a==='fast_food') return {icon:'🥙',label:'Provisions'};
+  if(h==='castle'||h==='fort'||h==='fortification') return {icon:'🏰',label:'Fortress'};
+  if(h==='abbey'||h==='monastery') return {icon:'⛪',label:'Holy Ruin'};
+  if(h==='ruins'||h==='archaeological_site') return {icon:'🏛️',label:'Ancient Ruin'};
+  if(h==='monument'||h==='memorial') return {icon:'🗿',label:'Monument'};
+  if(h==='wayside_shrine') return {icon:'🕯️',label:'Shrine'};
+  if(a==='place_of_worship') return {icon:'⛪',label:tags.building==='cathedral'?'Cathedral':'Chapel'};
+  if(n==='peak') return {icon:'🏔️',label:'Peak'};
+  if(n==='hill') return {icon:'🌄',label:'Hill'};
+  if(n==='water'||n==='wetland') return {icon:'🌊',label:'Waters'};
+  if(t==='museum') return {icon:'🏛️',label:'Museum'};
+  if(t==='viewpoint') return {icon:'🔭',label:'Vantage Point'};
+  if(t==='hotel') return {icon:'🏨',label:'Inn'};
+  if(t==='camp_site') return {icon:'⛺',label:'Campsite'};
+  if(l==='park') return {icon:'🌳',label:'Parkland'};
+  if(c==='brewery') return {icon:'🍻',label:'Brewery'};
+  if(a==='theatre') return {icon:'🎭',label:'Theatre'};
+  if(a==='arts_centre') return {icon:'🎨',label:'Arts Hall'};
+  if(a==='marketplace') return {icon:'⚖️',label:'Market'};
+  if(a==='pharmacy') return {icon:'⚗️',label:'Apothecary'};
+  if(a==='hospital') return {icon:'🏥',label:'Healer\'s Hall'};
+  return {icon:'◈',label:'Point of Interest'};
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const S={
+  heading:0, lat:52.135, lon:-0.467, locationReady:false,
+  pois:[], fov:60, centreZone:9, edgeZone:28,
+  demo:false, musicOn:false, lockedPoi:null,
+  race:RACES.find(r=>r.id==='human'),
+};
+
+// ═══════════════════════════════════════════════
+//  RACE THEME
+// ═══════════════════════════════════════════════
+function applyRace(race){
+  S.race=race;
+  document.documentElement.style.setProperty('--race-color',race.color);
+  document.getElementById('avatar-emoji').textContent=race.emoji;
+  document.getElementById('avatar-race').textContent=race.name.toUpperCase();
+  document.getElementById('avatar-name').textContent=race.title.toUpperCase();
+  document.getElementById('avatar-affinity').textContent=race.affinityLine;
+  document.getElementById('avatar-emoji').style.filter=`drop-shadow(0 0 8px ${race.color})`;
+  document.getElementById('search-input').placeholder=race.searchHints;
+  setStatus(race.greetings[Math.floor(Math.random()*race.greetings.length)]);
+  // re-colour existing markers
+  document.querySelectorAll('.poi-marker').forEach(el=>el.style.setProperty('--race-color',race.color));
+}
+
+// ═══════════════════════════════════════════════
+//  AVATAR MODAL
+// ═══════════════════════════════════════════════
+function buildAvatarGrid(id){
+  const g=document.getElementById(id); g.innerHTML='';
+  RACES.forEach(race=>{
+    const el=document.createElement('div');
+    el.className='av-card'+(race.id===S.race.id?' selected':'');
+    el.innerHTML=`<div class="av-emoji">${race.emoji}</div><div class="av-name">${race.name}</div><div class="av-sub">${race.title}</div><div class="av-affinity">${race.affinity}</div>`;
+    el.onclick=()=>{applyRace(race);document.querySelectorAll('.av-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');setTimeout(closeAvatarModal,280);};
+    g.appendChild(el);
+  });
+}
+function buildPermRow(){
+  const r=document.getElementById('perm-avatar-row'); r.innerHTML='';
+  RACES.forEach(race=>{
+    const el=document.createElement('div');
+    el.className='perm-av'+(race.id===S.race.id?' sel':'');
+    el.innerHTML=`<div class="e">${race.emoji}</div><div class="n">${race.name}</div>`;
+    el.onclick=()=>{applyRace(race);document.querySelectorAll('.perm-av').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');};
+    r.appendChild(el);
+  });
+}
+function openAvatarModal(){buildAvatarGrid('avatar-grid');document.getElementById('avatar-modal').classList.add('open');}
+function closeAvatarModal(){document.getElementById('avatar-modal').classList.remove('open');}
+document.getElementById('avatar-modal').addEventListener('click',e=>{if(e.target===document.getElementById('avatar-modal'))closeAvatarModal();});
+
+// ═══════════════════════════════════════════════
+//  GEO
+// ═══════════════════════════════════════════════
+function hav(a,b,c,d){const R=6371,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function brng(a,b,c,d){const dl=(d-b)*Math.PI/180,y=Math.sin(dl)*Math.cos(c*Math.PI/180),x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos(dl);return((Math.atan2(y,x)*180/Math.PI)+360)%360;}
+function dirLabel(d){return['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];}
+function fmt(km){return km<1?Math.round(km*1000)+'m':km.toFixed(1)+'km';}
+
+// ═══════════════════════════════════════════════
+//  OVERPASS QUERY — live OSM data
+//  Radius: 5km, timeout 25s, two mirror fallback
+// ═══════════════════════════════════════════════
+const OVERPASS_MIRRORS=[
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+
+async function fetchOSM(query, radius=5000){
+  const key=query.toLowerCase().trim().split(/\s+/)[0];
+  const fragment=OSM_QUERIES[key]||`node["name"~"${query}",i](around:{R},{LAT},{LON});`;
+  const q=fragment.replace(/{R}/g,radius).replace(/{LAT}/g,S.lat).replace(/{LON}/g,S.lon);
+  const overpass=`[out:json][timeout:25];(${q});out center 40;`;
+
+  // Try each mirror in turn, return first success
+  for(const mirror of OVERPASS_MIRRORS){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),12000); // 12s per mirror
+      const res=await fetch(mirror+'?data='+encodeURIComponent(overpass),{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(!res.ok) continue;
+      const data=await res.json();
+      const els=data.elements||[];
+      if(els.length>0||mirror===OVERPASS_MIRRORS[OVERPASS_MIRRORS.length-1]) return els;
+    }catch(e){
+      console.warn('Mirror failed:',mirror,e.message);
+    }
+  }
+  return [];
+}
+
+function osmToPoi(el){
+  const tags=el.tags||{};
+  const lat=el.lat||(el.center&&el.center.lat)||null;
+  const lon=el.lon||(el.center&&el.center.lon)||null;
+  if(!lat||!lon)return null;
+  const km=hav(S.lat,S.lon,lat,lon);
+  const bearing=brng(S.lat,S.lon,lat,lon);
+  const meta=poiMeta(tags);
+  const name=tags.name||tags['name:en']||meta.label+' (unnamed)';
+  // Build address string
+  const addrParts=[tags['addr:housenumber'],tags['addr:street'],tags['addr:city']].filter(Boolean);
+  const address=addrParts.length?addrParts.join(', '):(tags['addr:suburb']||tags['addr:village']||'');
+  // Build tag chips
+  const tagChips=[];
+  if(tags.cuisine)tagChips.push(tags.cuisine.replace(/_/g,' '));
+  if(tags.opening_hours)tagChips.push(tags.opening_hours.substring(0,20));
+  if(tags['wheelchair']==='yes')tagChips.push('Accessible');
+  if(tags['real_ale']==='yes'||tags['real_ale']==='only')tagChips.push('Real Ale');
+  if(tags['outdoor_seating']==='yes')tagChips.push('Outdoor Seating');
+  if(tags['ele'])tagChips.push(tags['ele']+'m');
+  if(tags['historic'])tagChips.push(tags['historic'].replace(/_/g,' '));
+  const osmUrl=`https://www.openstreetmap.org/${el.type}/${el.id}`;
+  return{id:el.id,name,lat,lon,km,bearing,icon:meta.icon,label:meta.label,address,tags:tagChips,osmUrl,rawTags:tags};
+}
+
+// ═══════════════════════════════════════════════
+//  COMPASS TAPE
+// ═══════════════════════════════════════════════
+const tape=document.getElementById('compass-tape');
+const labels=[];
+for(let i=0;i<360;i+=5){let l=i%90===0?['N','E','S','W'][i/90]:i%45===0?['NE','SE','SW','NW'][[45,135,225,315].indexOf(i)]:i%10===0?String(i).padStart(3,'0'):'·';labels.push(l);}
+for(let r=0;r<3;r++)labels.forEach(l=>{const e=document.createElement('div');e.className='c-tick'+(l.match(/^[NSEW]$/)?' card':'');e.textContent=l;tape.appendChild(e);});
+const tickW=26,totalTape=labels.length*tickW;
+function updateCompass(h){
+  S.heading=h;
+  const off=(h/360)*totalTape;
+  tape.style.transform=`translateX(calc(-50% - ${off}px + ${totalTape}px))`;
+  document.getElementById('heading-txt').textContent=Math.round(h).toString().padStart(3,'0')+'° '+dirLabel(h);
+  document.getElementById('hdg-stat').textContent=Math.round(h)+'°';
+  checkCentreLock();
+  updateMarkers();
+}
+
+// ═══════════════════════════════════════════════
+//  CENTRE LOCK CHECK — fires orb when POI centred
+// ═══════════════════════════════════════════════
+let lastLockedId=null;
+function checkCentreLock(){
+  let nearest=null, nearestAbs=999;
+  S.pois.forEach(poi=>{
+    const rel=((poi.bearing-S.heading+540)%360)-180;
+    const abs=Math.abs(rel);
+    if(abs<nearestAbs&&abs<S.centreZone){nearestAbs=abs;nearest=poi;}
+  });
+  const xhair=document.getElementById('xhair');
+  const banner=document.getElementById('lock-banner');
+  if(nearest){
+    xhair.classList.add('locked');
+    // highlight the marker
+    document.querySelectorAll('.poi-marker').forEach(el=>{
+      el.classList.toggle('centre-locked',el.id==='pm-'+S.pois.indexOf(nearest));
+    });
+    // show lock banner
+    document.getElementById('lb-name').textContent=nearest.name;
+    document.getElementById('lb-type').textContent=nearest.label;
+    document.getElementById('lb-dist').textContent=fmt(nearest.km)+' · '+Math.round(nearest.bearing)+'° '+dirLabel(nearest.bearing);
+    banner.classList.add('show');
+    // fire orb only when first locked onto this poi
+    if(nearest.id!==lastLockedId){
+      lastLockedId=nearest.id;
+      triggerLockRings();
+      playSting(['F5','A5'],-22);
+    }
+    S.lockedPoi=nearest;
+  } else {
+    xhair.classList.remove('locked');
+    banner.classList.remove('show');
+    document.querySelectorAll('.poi-marker').forEach(el=>el.classList.remove('centre-locked'));
+    lastLockedId=null;
+    S.lockedPoi=null;
+  }
+}
+
+function triggerLockRings(){
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const r=document.createElement('div');
+      r.className='lock-ring';
+      r.style.animationDelay=(i*0.12)+'s';
+      document.body.appendChild(r);
+      setTimeout(()=>r.remove(),1000);
+    },i*120);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CD ORB (scan sweep)
+// ═══════════════════════════════════════════════
+function triggerCDOrb(){
+  const orb=document.getElementById('cd-orb');
+  orb.classList.remove('active'); void orb.offsetWidth; orb.classList.add('active');
+  const sweep=document.createElement('div');
+  sweep.className='orb-sweep'; document.body.appendChild(sweep);
+  setTimeout(()=>sweep.remove(),1400);
+  const sw=document.getElementById('radar-sweep');
+  sw.classList.remove('active'); void sw.offsetWidth; sw.classList.add('active');
+  setTimeout(()=>orb.classList.remove('active'),2200);
+}
+
+// ═══════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════
+function clearMarkers(){document.querySelectorAll('.poi-marker,.edge-arrow').forEach(e=>e.remove());}
+
+function updateMarkers(){
+  const W=window.innerWidth,H=window.innerHeight;
+  S.pois.forEach((poi,idx)=>{
+    const rel=((poi.bearing-S.heading+540)%360)-180;
+    const abs=Math.abs(rel);
+    const inFov=abs<S.fov/2;
+    const mId='pm-'+idx,aId='pa-'+idx;
+    let el=document.getElementById(mId),arrow=document.getElementById(aId);
+    if(inFov){
+      if(arrow){arrow.remove();}
+      const x=W/2+(rel/(S.fov/2))*(W/2);
+      const y=H*.52;
+      if(!el){el=buildMarker(poi,idx);el.id=mId;document.getElementById('ar-layer').appendChild(el);}
+      el.style.left=x+'px'; el.style.top=y+'px';
+      const op=abs<=S.centreZone?1:abs>=S.edgeZone?0:1-(abs-S.centreZone)/(S.edgeZone-S.centreZone);
+      const sc=Math.max(.7,Math.min(1.2,100/(poi.km*8+30)));
+      el.style.opacity=op.toFixed(3);
+      el.style.transform=`translate(-50%,-50%) scale(${sc})`;
+      el.style.pointerEvents=op>.1?'all':'none';
+    } else {
+      if(el){el.style.opacity='0';el.style.pointerEvents='none';}
+      if(!document.getElementById(aId)){
+        const ar=document.createElement('div');
+        ar.className='edge-arrow '+(rel<0?'left':'right');
+        ar.id=aId;
+        ar.innerHTML=`<div class="ea-icon">${rel<0?'◂':'▸'}</div><div class="ea-label">${poi.name.split(/\s+/)[0]}</div>`;
+        ar.addEventListener('click',()=>showDetail(poi));
+        document.getElementById('ar-layer').appendChild(ar);
+        if(rel<0){ar.style.left='10px';ar.style.right='auto';}else{ar.style.right='10px';ar.style.left='auto';}
+        ar.style.top='50%';ar.style.transform='translateY(-50%)';
+      }
+    }
+  });
+}
+
+function buildMarker(poi,idx){
+  const el=document.createElement('div');
+  el.className='poi-marker';
+  el.style.setProperty('--race-color',S.race.color);
+  el.innerHTML=`<div class="m-label">${poi.name}</div><div class="m-ring"><div class="m-icon">${poi.icon}</div><div class="m-core"></div></div><div class="m-dist">${fmt(poi.km)}</div>`;
+  el.addEventListener('click',()=>showDetail(poi));
+  const core=el.querySelector('.m-core');
+  if(core)core.style.animationDelay=(idx*.3)+'s';
+  return el;
+}
+
+// ═══════════════════════════════════════════════
+//  DETAIL CARD
+// ═══════════════════════════════════════════════
+function showDetail(poi){
+  document.getElementById('lock-banner').classList.remove('show');
+  document.getElementById('card-name').textContent=poi.name;
+  document.getElementById('card-dist').textContent=fmt(poi.km);
+  document.getElementById('card-dir').textContent=Math.round(poi.bearing)+'° '+dirLabel(poi.bearing);
+  document.getElementById('card-type').textContent=poi.label;
+  document.getElementById('card-address').textContent=poi.address||'';
+  document.getElementById('card-address').style.display=poi.address?'block':'none';
+  // Race-flavoured description
+  const desc=raceDesc(poi,S.race);
+  document.getElementById('card-desc').textContent=desc;
+  document.getElementById('card-tags').innerHTML=(poi.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+  const link=document.getElementById('card-osm-link');
+  link.href=poi.osmUrl;
+  document.getElementById('detail-card').classList.add('show');
+  playSting(['A4','D5']);
+}
+
+function raceDesc(poi,race){
+  const t=poi.rawTags||{};
+  const a=t.amenity||'',h=t.historic||'',n=t.natural||'';
+  if(race.id==='dwarf'&&(a==='pub'||a==='bar')) return `*inhales deeply* ${poi.name}. ${t.real_ale==='yes'?'Real ale on cask. ':''}${t.outdoor_seating==='yes'?'Garden seating — wasteful, but the air is fair. ':''}A worthy establishment for a weary Dwarf.`;
+  if(race.id==='elf'&&n==='peak') return `${poi.name} — the summit communes with the sky. ${t.ele?'At '+t.ele+' metres, ':''}the wind carries voices of the ancient world.`;
+  if(race.id==='cleric'&&(h==='castle'||h==='church'||h==='abbey')) return `${poi.name}. ${h==='abbey'?'A holy house — the prayers of generations absorbed into its very stone.':'Consecrated ground. Old power runs beneath the foundations.'}`;
+  if(race.id==='ranger'&&n==='peak') return `${poi.name}. ${t.ele?t.ele+'m — good vantage. ':''}Command of the surrounding terrain. First rule: take the high ground.`;
+  if(race.id==='witch') return `${poi.name}. The aether shifts noticeably here. ${h?'Something old was done at this place. ':''}Proceed with awareness.`;
+  if(race.id==='bard'&&a==='cafe') return `Ah, ${poi.name} — a cafe! Where the great conversations happen. Where songs are born over a third cup. Let us linger.`;
+  if(race.id==='orc') return `${poi.name}. ${poi.km<0.5?'CLOSE. Very close. ':''}Orc assess the strategic value. ${a==='pub'?'Ale sharpens the mind. Briefly.':'Acceptable.'}`;
+  // default
+  return `${poi.name} — ${poi.label.toLowerCase()} located ${fmt(poi.km)} from your position, bearing ${Math.round(poi.bearing)}° ${dirLabel(poi.bearing)}.${t.opening_hours?' Open: '+t.opening_hours.substring(0,40):''}`;
+}
+
+document.getElementById('dc-close').addEventListener('click',()=>document.getElementById('detail-card').classList.remove('show'));
+// Tapping lock banner also opens detail
+document.getElementById('lock-banner').addEventListener('click',()=>{if(S.lockedPoi)showDetail(S.lockedPoi);});
+
+// ═══════════════════════════════════════════════
+//  SCAN
+// ═══════════════════════════════════════════════
+async function doScan(){
+  const q=document.getElementById('search-input').value.trim();
+  if(!q){setStatus(S.race.greetings[Math.floor(Math.random()*S.race.greetings.length)]);return;}
+  if(S.demo){setStatus('Live data unavailable in Demo Mode — grant location access to search real places.');return;}
+  if(!S.locationReady){setStatus('Waiting for your position… try again in a moment.');return;}
+
+  const btn=document.getElementById('scan-btn');
+  btn.classList.add('scanning'); btn.textContent='◈ SCRYING';
+  document.getElementById('loading-bar').classList.add('show');
+  setStatus('Scrying the realm for '+q+'…');
+  triggerCDOrb();
+  clearMarkers(); lastLockedId=null;
+  playSting(['G4','A4','D5']);
+
+  try{
+    const elements=await fetchOSM(q, 5000);
+    const pois=elements.map(osmToPoi).filter(Boolean);
+    // dedupe by id, sort by distance, cap at 25
+    const seen=new Set();
+    S.pois=pois.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true;}).sort((a,b)=>a.km-b.km).slice(0,25);
+    document.getElementById('poi-num').textContent=S.pois.length;
+    document.getElementById('disc-num').textContent=S.pois.length;
+    updateMarkers();
+    if(S.pois.length){
+      setStatus(`${S.pois.length} ${q} found — nearest: ${S.pois[0].name} (${fmt(S.pois[0].km)})`);
+    } else {
+      setStatus('None found within 5km — try: pubs, castles, coffee, churches');
+    }
+  }catch(err){
+    setStatus('Scrying failed — check your connection and try again');
+    console.error(err);
+  }
+  btn.classList.remove('scanning'); btn.textContent='SCAN';
+  document.getElementById('loading-bar').classList.remove('show');
+}
+document.getElementById('scan-btn').addEventListener('click',doScan);
+document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')doScan();});
+
+// ═══════════════════════════════════════════════
+//  KCD-STYLE MUSIC — Web Audio API direct
+//  Acoustic medieval: lute plucks, hurdy-gurdy
+//  drone, low cello swells, hand drum pulse.
+//  No Tone.js = no mobile jitter.
+// ═══════════════════════════════════════════════
+let _ac=null, _musicNodes=[], _musicOn=false, _musicStarted=false;
+let _nextLuteTime=0, _nextDrumTime=0, _schedTimer=null;
+
+// D Dorian scale — KCD's characteristic mode
+const KCD_SCALE_HZ=[
+  146.83,164.81,174.61,195.99,220.00,246.94,261.63, // D3 E3 F3 G3 A3 B3 C4
+  293.66,329.63,349.23,392.00,440.00,493.88,523.25, // D4 E4 F4 G4 A4 B4 C5
+  587.33,659.25                                       // D5 E5
+];
+
+// Melodic phrases — indices into KCD_SCALE_HZ — authentic medieval feel
+const PHRASES=[
+  [0,2,3,5,3,2,0],          // descending modal
+  [7,9,10,12,10,9,7,5],     // upper register phrase
+  [3,5,7,5,3,2,0,2],        // arching phrase
+  [0,3,5,3,0],              // short cadence
+  [7,10,12,10,7,5,3,5,7],   // longer wandering
+  [0,2,3,5,7,5,3],          // rising then falling
+];
+
+function getAC(){
+  if(!_ac) _ac=new(window.AudioContext||window.webkitAudioContext)();
+  return _ac;
+}
+
+// Pluck a single lute-like note
+function pluckNote(ac,freq,startTime,dur=1.2,gain=0.18){
+  const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate);
+  const d=buf.getChannelData(0);
+  // Karplus-Strong style: noise burst filtered with feedback
+  const delay=Math.round(ac.sampleRate/freq);
+  for(let i=0;i<delay;i++) d[i]=(Math.random()*2-1)*0.5;
+  for(let i=delay;i<d.length;i++){
+    d[i]=0.996*(d[i-delay]+d[i-delay+1])*0.5; // averaging filter = string decay
+  }
+  // Fade out tail
+  const fadeStart=Math.floor(d.length*0.7);
+  for(let i=fadeStart;i<d.length;i++) d[i]*=(d.length-i)/(d.length-fadeStart);
+
+  const src=ac.createBufferSource();
+  src.buffer=buf;
+  const g=ac.createGain();
+  g.gain.setValueAtTime(gain,startTime);
+  g.gain.exponentialRampToValueAtTime(0.001,startTime+dur);
+  const filt=ac.createBiquadFilter();
+  filt.type='lowpass'; filt.frequency.value=3200; filt.Q.value=0.8;
+
+  // Light reverb via convolver approximation (short delay)
+  const rev=ac.createDelay(0.08);
+  rev.delayTime.value=0.06;
+  const revG=ac.createGain(); revG.gain.value=0.15;
+
+  src.connect(filt); filt.connect(g); g.connect(ac.destination);
+  src.connect(rev); rev.connect(revG); revG.connect(ac.destination);
+  src.start(startTime); src.stop(startTime+dur+0.1);
+  return src;
+}
+
+// Hurdy-gurdy drone — continuous buzzing open string on D2+A2
+function startDrone(ac){
+  const drones=[[73.42,0.12],[110.00,0.08],[146.83,0.06]]; // D2 A2 D3
+  const masterG=ac.createGain(); masterG.gain.value=1;
+  masterG.connect(ac.destination);
+  _musicNodes.push(masterG);
+
+  drones.forEach(([freq,vol])=>{
+    const osc=ac.createOscillator();
+    osc.type='sawtooth'; osc.frequency.value=freq;
+    // Slight detune for organic feel
+    osc.detune.value=(Math.random()-0.5)*8;
+
+    // Tremolo (hurdy-gurdy wheel buzz)
+    const trem=ac.createOscillator(); trem.frequency.value=7.2;
+    const tremG=ac.createGain(); tremG.gain.value=0.04;
+    trem.connect(tremG); tremG.connect(osc.frequency);
+
+    const filt=ac.createBiquadFilter();
+    filt.type='bandpass'; filt.frequency.value=freq*2; filt.Q.value=2;
+
+    const g=ac.createGain(); g.gain.value=vol;
+
+    osc.connect(filt); filt.connect(g); g.connect(masterG);
+    trem.start(); osc.start();
+    _musicNodes.push(osc,trem,tremG,g);
+  });
+}
+
+// Slow cello-like swell on chord tones
+function startCelloSwell(ac){
+  // D minor chord: D3 F3 A3 — slow attack swell
+  [[146.83,0.07],[174.61,0.05],[220.00,0.04]].forEach(([freq,vol],i)=>{
+    const osc=ac.createOscillator();
+    osc.type='triangle'; osc.frequency.value=freq;
+    osc.detune.value=i*3; // slight spread
+
+    const vib=ac.createOscillator(); vib.frequency.value=5.5;
+    const vibG=ac.createGain(); vibG.gain.value=3;
+    vib.connect(vibG); vibG.connect(osc.frequency);
+
+    const env=ac.createGain();
+    env.gain.setValueAtTime(0.001,ac.currentTime);
+    env.gain.linearRampToValueAtTime(vol,ac.currentTime+3.5);
+
+    const filt=ac.createBiquadFilter();
+    filt.type='lowpass'; filt.frequency.value=800;
+
+    osc.connect(filt); filt.connect(env); env.connect(ac.destination);
+    vib.start(); osc.start();
+    _musicNodes.push(osc,vib,env);
+  });
+}
+
+// Hand drum — soft periodic thud
+function scheduleDrum(ac,time){
+  const buf=ac.createBuffer(1,ac.sampleRate*0.4,ac.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++){
+    const t=i/ac.sampleRate;
+    d[i]=Math.sin(2*Math.PI*80*t*Math.exp(-t*18))*(Math.random()*0.3+0.7)*Math.exp(-t*12);
+  }
+  const src=ac.createBufferSource(); src.buffer=buf;
+  const g=ac.createGain(); g.gain.value=0.22;
+  const filt=ac.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=300;
+  src.connect(filt); filt.connect(g); g.connect(ac.destination);
+  src.start(time); src.stop(time+0.5);
+}
+
+// Scheduler — looks ahead 0.2s, runs every 100ms
+let _phraseIdx=0, _noteIdx=0, _currentPhrase=PHRASES[0];
+let _beatInterval=0.52; // ~115bpm feel — KCD is moderately paced
+
+function scheduleMusicAhead(){
+  if(!_musicOn||!_ac)return;
+  const ac=_ac;
+  const lookAhead=ac.currentTime+0.2;
+
+  // Lute melody scheduler
+  while(_nextLuteTime<lookAhead){
+    const freq=KCD_SCALE_HZ[_currentPhrase[_noteIdx]];
+    // vary gain slightly for human feel
+    const vel=0.12+Math.random()*0.1;
+    pluckNote(ac,freq,_nextLuteTime,1.4,vel);
+
+    _noteIdx++;
+    if(_noteIdx>=_currentPhrase.length){
+      _noteIdx=0;
+      // Small pause between phrases
+      _nextLuteTime+=_beatInterval*2;
+      // Pick next phrase (avoid immediate repeat)
+      let next;
+      do{ next=Math.floor(Math.random()*PHRASES.length); }while(next===_phraseIdx&&PHRASES.length>1);
+      _phraseIdx=next; _currentPhrase=PHRASES[_phraseIdx];
+    } else {
+      // Slight rhythm variation — some notes longer
+      const noteLen=(_noteIdx%3===0)?_beatInterval*1.5:_beatInterval;
+      _nextLuteTime+=noteLen;
+    }
+  }
+
+  // Drum scheduler — every 2 beats, slight swing
+  while(_nextDrumTime<lookAhead){
+    scheduleDrum(ac,_nextDrumTime);
+    _nextDrumTime+=_beatInterval*2+(Math.random()*0.04-0.02);
+  }
+}
+
+async function initMusic(){
+  if(_musicStarted)return; _musicStarted=true;
+  const ac=getAC();
+  if(ac.state==='suspended') await ac.resume();
+
+  _nextLuteTime=ac.currentTime+0.3;
+  _nextDrumTime=ac.currentTime+0.3;
+
+  startDrone(ac);
+  startCelloSwell(ac);
+
+  _musicOn=true;
+  _schedTimer=setInterval(scheduleMusicAhead,100);
+  scheduleMusicAhead();
+
+  document.getElementById('music-btn').classList.add('playing');
+  document.getElementById('music-btn').textContent='♫';
+}
+
+function toggleMusic(){
+  if(!_musicStarted){initMusic();return;}
+  if(_musicOn){
+    _musicOn=false;
+    clearInterval(_schedTimer);
+    if(_ac) _ac.suspend();
+    document.getElementById('music-btn').classList.remove('playing');
+    document.getElementById('music-btn').textContent='♪';
+  } else {
+    _musicOn=true;
+    if(_ac){
+      _ac.resume().then(()=>{
+        const ac=_ac;
+        _nextLuteTime=ac.currentTime+0.1;
+        _nextDrumTime=ac.currentTime+0.1;
+        _schedTimer=setInterval(scheduleMusicAhead,100);
+        scheduleMusicAhead();
+      });
+    }
+    document.getElementById('music-btn').classList.add('playing');
+    document.getElementById('music-btn').textContent='♫';
+  }
+}
+document.getElementById('music-btn').addEventListener('click',toggleMusic);
+
+// Sting — two quick lute plucks on discovery/scan
+function playSting(freqs){
+  if(!_musicStarted||!_musicOn)return;
+  try{
+    const ac=getAC();
+    const t=ac.currentTime;
+    freqs.forEach((f,i)=>{
+      // Convert note name to Hz
+      const noteHz={'G4':392,'A4':440,'D5':587.33,'F5':698.46,'A5':880,'D4':293.66,'F4':349.23}[f]||440;
+      pluckNote(ac,noteHz,t+i*0.18,0.9,0.2);
+    });
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════
+//  COMPASS — REAL + DEMO
+// ═══════════════════════════════════════════════
+let compassStarted=false,demoTimer=null,gotReading=false;
+function attachOrientation(){
+  if(compassStarted)return;compassStarted=true;
+  window.addEventListener('deviceorientation',e=>{let v=(e.webkitCompassHeading!=null)?e.webkitCompassHeading:e.alpha;if(v!=null){gotReading=true;updateCompass(v);}},true);
+  setTimeout(()=>{if(!gotReading)startDemoCompass();},2200);
+}
+async function startCompassReal(){
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    try{const r=await DeviceOrientationEvent.requestPermission();r==='granted'?attachOrientation():startDemoCompass();}
+    catch{startDemoCompass();}
+  }else{attachOrientation();}
+}
+function startDemoCompass(){
+  if(demoTimer)return;let h=40,d=1;
+  demoTimer=setInterval(()=>{h+=d*.35;if(h>115)d=-1;if(h<0)d=1;updateCompass(h);},50);
+}
+
+// ═══════════════════════════════════════════════
+//  CAMERA
+// ═══════════════════════════════════════════════
+async function startCamera(){
+  const v=document.getElementById('cam');
+  v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.muted=true;
+  try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});v.srcObject=s;await v.play();}
+  catch{setStatus('Camera denied — point mode active');}
+}
+
+// ═══════════════════════════════════════════════
+//  GEOLOCATION (watch for movement)
+// ═══════════════════════════════════════════════
+function startLocation(){
+  if(!navigator.geolocation){setStatus('No GPS available');return;}
+  navigator.geolocation.watchPosition(
+    p=>{S.lat=p.coords.latitude;S.lon=p.coords.longitude;S.locationReady=true;},
+    ()=>setStatus('GPS signal weak'),
+    {enableHighAccuracy:true,maximumAge:5000}
+  );
+}
+
+// ═══════════════════════════════════════════════
+//  TIME OF DAY
+// ═══════════════════════════════════════════════
+function applyTOD(){
+  const h=new Date().getHours(),v=document.getElementById('tod-vignette');
+  if(h>=5&&h<8)v.style.background='linear-gradient(to bottom,rgba(255,140,60,.12) 0%,transparent 60%)';
+  else if(h>=18&&h<21)v.style.background='linear-gradient(to bottom,rgba(255,100,30,.14) 0%,transparent 60%)';
+  else if(h<5||h>=21)v.style.background='linear-gradient(to bottom,rgba(20,10,40,.35) 0%,rgba(0,0,20,.2) 100%)';
+  else v.style.background='none';
+}
+
+// ═══════════════════════════════════════════════
+//  RUNE PARTICLES
+// ═══════════════════════════════════════════════
+const RUNES='ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
+function spawnRune(){const el=document.createElement('div');el.className='rune-particle';el.textContent=RUNES[Math.floor(Math.random()*RUNES.length)];el.style.left=(Math.random()*100)+'vw';const d=12+Math.random()*20;el.style.animationDuration=d+'s';el.style.animationDelay=(-Math.random()*d)+'s';document.body.appendChild(el);setTimeout(()=>el.remove(),(d+1)*1000);}
+for(let i=0;i<10;i++)spawnRune();setInterval(spawnRune,3500);
+
+// ═══════════════════════════════════════════════
+//  STATUS
+// ═══════════════════════════════════════════════
+function setStatus(msg){document.getElementById('status-line').textContent=msg;}
+
+// ═══════════════════════════════════════════════
+//  LAUNCH
+// ═══════════════════════════════════════════════
+function launchApp(demo){
+  document.getElementById('perm-screen').style.display='none';
+  S.demo=demo;
+  applyTOD();
+  if(demo){
+    document.getElementById('demo-banner').classList.add('show');
+    document.getElementById('cam').style.background='radial-gradient(ellipse at 50% 60%,#0d1520 0%,#050a10 100%)';
+    startDemoCompass();
+    setStatus('Demo mode — live data requires location access');
+  } else {
+    startCamera();
+    startCompassReal();
+    startLocation();
+    setStatus(S.race.greetings[0]+' — scan to reveal what lies before you');
+  }
+  initMusic();
+}
+
+document.getElementById('perm-go').addEventListener('click',()=>launchApp(false));
+document.getElementById('perm-demo').addEventListener('click',()=>launchApp(true));
+
+// ── INIT ──
+applyRace(S.race);
+buildPermRow();
+
+// ═══════════════════════════════════════════════
+//  PWA — MANIFEST (injected inline so single-file works)
+// ═══════════════════════════════════════════════
+(function injectManifest(){
+  // SVG icon embedded as data URI — gold rune circle on dark background
+  const iconSvg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" fill="#050403"/>
+    <circle cx="256" cy="256" r="200" fill="none" stroke="#c9a84c" stroke-width="8" opacity="0.6"/>
+    <circle cx="256" cy="256" r="160" fill="none" stroke="#c9a84c" stroke-width="3" opacity="0.3"/>
+    <!-- crosshair lines -->
+    <line x1="256" y1="80" x2="256" y2="156" stroke="#c9a84c" stroke-width="6" stroke-linecap="round"/>
+    <line x1="256" y1="356" x2="256" y2="432" stroke="#c9a84c" stroke-width="6" stroke-linecap="round"/>
+    <line x1="80" y1="256" x2="156" y2="256" stroke="#c9a84c" stroke-width="6" stroke-linecap="round"/>
+    <line x1="356" y1="256" x2="432" y2="256" stroke="#c9a84c" stroke-width="6" stroke-linecap="round"/>
+    <!-- centre orb -->
+    <circle cx="256" cy="256" r="28" fill="#c9a84c" opacity="0.9"/>
+    <circle cx="256" cy="256" r="18" fill="#f0c040"/>
+    <circle cx="256" cy="256" r="8" fill="#ffffff"/>
+    <!-- corner tick marks -->
+    <line x1="130" y1="162" x2="148" y2="180" stroke="#c9a84c" stroke-width="4" opacity="0.5"/>
+    <line x1="382" y1="162" x2="364" y2="180" stroke="#c9a84c" stroke-width="4" opacity="0.5"/>
+    <line x1="130" y1="350" x2="148" y2="332" stroke="#c9a84c" stroke-width="4" opacity="0.5"/>
+    <line x1="382" y1="350" x2="364" y2="332" stroke="#c9a84c" stroke-width="4" opacity="0.5"/>
+    <!-- rune text -->
+    <text x="256" y="472" text-anchor="middle" font-size="28" fill="#c9a84c" opacity="0.5" font-family="serif">ᚠ ᚢ ᚦ ᚨ ᚱ</text>
+  </svg>`;
+  const iconUrl='data:image/svg+xml;base64,'+btoa(iconSvg);
+
+  const manifest={
+    name:'VANTAGE — World Scout',
+    short_name:'VANTAGE',
+    description:'RPG-style AR world explorer. Hunt real places with your compass.',
+    start_url:'.',
+    display:'fullscreen',
+    orientation:'portrait',
+    background_color:'#050403',
+    theme_color:'#050403',
+    icons:[
+      {src:iconUrl,sizes:'192x192',type:'image/svg+xml',purpose:'any maskable'},
+      {src:iconUrl,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'},
+    ],
+    categories:['navigation','travel','entertainment'],
+  };
+
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  document.getElementById('pwa-manifest').href=url;
+})();
+
+// ═══════════════════════════════════════════════
+//  PWA — SERVICE WORKER (inline via blob)
+// ═══════════════════════════════════════════════
+(function registerSW(){
+  if(!('serviceWorker' in navigator))return;
+  const swCode=`
+const CACHE='vantage-v1';
+const ASSETS=['/'];
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch',e=>{
+  // Network-first for OSM API calls, cache-first for everything else
+  if(e.request.url.includes('overpass-api.de')||e.request.url.includes('fonts.googleapis')||e.request.url.includes('cdnjs')){
+    e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));
+    return;
+  }
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
+      if(cached)return cached;
+      return fetch(e.request).then(res=>{
+        if(res&&res.status===200){
+          const clone=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,clone));
+        }
+        return res;
+      });
+    })
+  );
+});
+  `;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const url=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url,{scope:'./'})
+    .then(()=>console.log('VANTAGE SW registered'))
+    .catch(e=>console.warn('SW registration failed (expected on file://):',e));
+})();
+
+// ═══════════════════════════════════════════════
+//  PWA — INSTALL PROMPT
+// ═══════════════════════════════════════════════
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  // Show install banner after a short delay (don't interrupt the loading experience)
+  setTimeout(()=>{
+    document.getElementById('install-banner').classList.add('show');
+  },3000);
+});
+
+document.getElementById('install-btn').addEventListener('click',async()=>{
+  const banner=document.getElementById('install-banner');
+  banner.classList.remove('show');
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    const{outcome}=await deferredPrompt.userChoice;
+    if(outcome==='accepted'){
+      setStatus('VANTAGE installed — find it on your home screen');
+    }
+    deferredPrompt=null;
+  }
+});
+
+document.getElementById('install-dismiss').addEventListener('click',()=>{
+  document.getElementById('install-banner').classList.remove('show');
+  // Don't show again this session
+  deferredPrompt=null;
+});
+
+// If already installed as PWA, hide install prompt
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('install-banner').classList.remove('show');
+  deferredPrompt=null;
+});
+</script>
+</body>
+</html>
