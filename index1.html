@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VANTAGE V12 — Reactive World</title>
+<style>
+    body { margin: 0; background: #000; color: #d4c5a9; font-family: sans-serif; overflow: hidden; }
+    #ar { position: fixed; inset: 0; z-index: 1; }
+    .poi { position: absolute; transform-origin: center; z-index: 10; display: flex; align-items: center; justify-content: center; }
+    .poi-icon { font-size: 30px; color: #c9a84c; text-shadow: 0 0 10px #c9a84c; transition: transform 0.2s; }
+    .poi.legendary .poi-icon { color: #f9d423; text-shadow: 0 0 20px #f9d423; }
+    #xhair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; z-index: 100; pointer-events: none; font-size: 30px; }
+    #xhair.lock { color: #ff6b35; transform: translate(-50%, -50%) scale(1.5); }
+    #hud { position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 200; pointer-events: none; }
+    #xpbar { height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 10px; border: 1px solid #444; }
+    #xpfill { height: 100%; width: 0%; background: #c9a84c; transition: width 0.5s; box-shadow: 0 0 10px #c9a84c; }
+    #identity { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="ar"></div>
+<div id="xhair">✚</div>
+<div id="hud">
+    <div id="xpbar"><div id="xpfill"></div></div>
+    <div id="identity">Drifter — 0 XP</div>
+</div>
+
+<script>
+const S = { heading: 0, target: 0, pois: [], fov: 90, traits: {wanderer:0, seeker:0, hunter:0}, xp: 0, class: 'Drifter', discovered: new Set() };
+
+// ─── REACTIVE SPAWN LOGIC ───
+function spawnPOI() {
+    const el = document.createElement('div');
+    // The World Reacts: Rarity threshold increases if you are a Hunter
+    const rarityThreshold = (S.class === 'Hunter' ? 0.35 : 0.15);
+    const isLegendary = Math.random() < rarityThreshold;
+    
+    el.className = 'poi' + (isLegendary ? ' legendary' : '');
+    el.innerHTML = `<div class="poi-icon">${isLegendary ? '✦' : '◈'}</div>`;
+    document.getElementById('ar').appendChild(el);
+    
+    const dist = (Math.random() * 2) + 0.5;
+    S.pois.push({ el, bearing: Math.random() * 360, dist, id: Date.now() + Math.random(), legendary: isLegendary });
+}
+
+// Initial Spawn
+for(let i=0; i<15; i++) spawnPOI();
+
+function loop() {
+    S.heading += (S.target - S.heading) * 0.05;
+    const W = innerWidth, H = innerHeight;
+    S.pois.forEach(p => {
+        let rel = ((p.bearing - S.heading + 540) % 360) - 180;
+        if (Math.abs(rel) > S.fov / 2) { p.el.style.opacity = 0; return; }
+        let depth = p.dist / 4;
+        let x = (W / 2) + (rel / (S.fov / 2)) * (W * 0.5);
+        let y = H * 0.7 - (depth * H * 0.3);
+        p.el.style.transform = `translate(${x}px, ${y}px) scale(${1.5 - depth})`;
+        p.el.style.opacity = 1 - (depth * 0.4);
+    });
+    lockCheck();
+    requestAnimationFrame(loop);
+}
+
+let lockTimer = 0;
+function lockCheck() {
+    let best = null;
+    S.pois.forEach(p => {
+        let rel = Math.abs(((p.bearing - S.heading + 540) % 360) - 180);
+        if (rel < 10) best = p;
+    });
+    if (best) {
+        lockTimer++;
+        document.getElementById('xhair').classList.add('lock');
+        if (lockTimer > 60 && !S.discovered.has(best.id)) discover(best);
+    } else {
+        lockTimer = 0;
+        document.getElementById('xhair').classList.remove('lock');
+    }
+}
+
+function discover(p) {
+    S.discovered.add(p.id);
+    S.xp += p.legendary ? 50 : 10;
+    document.getElementById('xpfill').style.width = (S.xp % 100) + '%';
+    if(p.legendary) S.traits.hunter += 5; else S.traits.seeker += 2;
+    
+    // Class Evolution
+    S.class = S.traits.hunter > 20 ? 'Hunter' : (S.traits.seeker > 20 ? 'Seeker' : 'Drifter');
+    document.getElementById('identity').innerText = `${S.class} — ${S.xp} XP`;
+    
+    p.el.remove();
+    S.pois = S.pois.filter(x => x !== p);
+    spawnPOI(); // Respawn a new one based on updated class logic
+}
+
+setInterval(() => { S.target += (Math.random() - 0.5) * 20; }, 3000);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
