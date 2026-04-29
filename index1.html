@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VANTAGE V12 — Living World</title>
+<style>
+    body { margin: 0; background: #08080a; color: #d4c5a9; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+    #ar { position: fixed; inset: 0; perspective: 1000px; }
+    .poi { position: absolute; transform-origin: center; will-change: transform, opacity; display: flex; flex-direction: column; align-items: center; }
+    .poi-icon { font-size: 24px; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .poi.legendary .poi-icon { color: #f9d423; filter: drop-shadow(0 0 8px rgba(249,212,35,0.6)); }
+    #xhair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; transition: all 0.3s; pointer-events: none; }
+    #xhair.lock { color: #ff6b35; transform: translate(-50%, -50%) scale(1.5); }
+    #hud { position: fixed; bottom: 20px; left: 20px; right: 20px; }
+    #xpbar { height: 4px; background: #222; border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+    #xpfill { height: 100%; width: 0%; background: #c9a84c; transition: width 0.5s ease-out; box-shadow: 0 0 10px #c9a84c; }
+    #identity { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; }
+    #log { font-size: 12px; margin-top: 5px; opacity: 0.6; height: 1.2em; }
+    #btn-audio { position: fixed; top: 10px; right: 10px; background: transparent; border: 1px solid #333; color: #888; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="ar"></div>
+<div id="xhair">◈</div>
+<div id="hud">
+    <div id="xpbar"><div id="xpfill"></div></div>
+    <div id="identity">Initializing...</div>
+    <div id="log"></div>
+</div>
+<button id="btn-audio">Audio: Off</button>
+
+<script>
+const S = {
+    heading: 0, target: 0, pois: [], fov: 90,
+    traits: {wanderer:0, seeker:0, hunter:0},
+    xp: 0, class: 'Drifter', race: 'None',
+    locked: null, discovered: new Set()
+};
+
+// ─── WORLD LOGIC ───
+function spawnPOI(isRare = false) {
+    const el = document.createElement('div');
+    const isLegendary = isRare || Math.random() < 0.1;
+    el.className = 'poi' + (isLegendary ? ' legendary' : '');
+    el.innerHTML = `<div class="poi-icon">${isLegendary ? '✦' : '◈'}</div>`;
+    document.getElementById('ar').appendChild(el);
+    
+    // Weighted spawning based on traits
+    const dist = (Math.random() * 2) + (S.class === 'Nomad' ? 1.5 : 0.5);
+    S.pois.push({ el, bearing: Math.random() * 360, dist, id: Date.now() + Math.random(), legendary: isLegendary });
+}
+
+// Populate initial
+for(let i=0; i<15; i++) spawnPOI();
+
+// ─── AUDIO ───
+let audioCtx = { playing: false, tracks: [] };
+document.getElementById('btn-audio').onclick = (e) => {
+    if(!audioCtx.playing) {
+        // In a real app, use local files. Here we simulate.
+        audioCtx.playing = true;
+        e.target.textContent = "Audio: On";
+    } else {
+        audioCtx.playing = false;
+        e.target.textContent = "Audio: Off";
+    }
+};
+
+// ─── LOOP ───
+function loop() {
+    // Dynamic Difficulty / World Shift
+    if(S.pois.length < 10) spawnPOI(Math.random() < 0.2);
+    
+    // Smooth heading
+    S.heading += (S.target - S.heading) * 0.05;
+    
+    const W = innerWidth, H = innerHeight;
+    S.pois.forEach((p, i) => {
+        let rel = ((p.bearing - S.heading + 540) % 360) - 180;
+        if (Math.abs(rel) > S.fov / 2) { p.el.style.opacity = 0; return; }
+        
+        let depth = p.dist / 4;
+        let x = (W / 2) + (rel / (S.fov / 2)) * (W * 0.5);
+        let y = H * 0.7 - (depth * H * 0.3);
+        
+        p.el.style.transform = `translate(${x}px, ${y}px) scale(${1.5 - depth})`;
+        p.el.style.opacity = 1 - (depth * 0.4);
+    });
+
+    lockCheck();
+    requestAnimationFrame(loop);
+}
+
+// ─── LOCK & REACT ───
+let lockTimer = 0;
+function lockCheck() {
+    let best = null, minDist = 50;
+    S.pois.forEach(p => {
+        let rel = Math.abs(((p.bearing - S.heading + 540) % 360) - 180);
+        if (rel < 10) { best = p; }
+    });
+
+    if (best) {
+        lockTimer++;
+        document.getElementById('xhair').classList.add('lock');
+        if (lockTimer > 60 && !S.discovered.has(best.id)) {
+            discover(best);
+        }
+    } else {
+        lockTimer = 0;
+        document.getElementById('xhair').classList.remove('lock');
+    }
+}
+
+function discover(p) {
+    S.discovered.add(p.id);
+    S.xp += p.legendary ? 50 : 10;
+    document.getElementById('xpfill').style.width = (S.xp % 100) + '%';
+    
+    // Trait Update
+    if(p.legendary) S.traits.hunter += 5;
+    else S.traits.seeker += 2;
+    
+    // Evolution logic
+    if(S.traits.hunter > 20) S.class = 'Hunter';
+    else if(S.traits.seeker > 20) S.class = 'Seeker';
+    else if(S.traits.wanderer > 20) S.class = 'Nomad';
+    
+    document.getElementById('identity').innerText = `${S.class} — XP: ${S.xp}`;
+    document.getElementById('log').innerText = p.legendary ? "Target acquired." : "POI registered.";
+    
+    // Remove and spawn new (Reactive)
+    p.el.remove();
+    S.pois = S.pois.filter(x => x !== p);
+    spawnPOI(Math.random() < (S.class === 'Hunter' ? 0.3 : 0.1));
+}
+
+// Background Wander
+setInterval(() => { S.target += (Math.random() - 0.5) * 20; S.traits.wanderer += 0.1; }, 3000);
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
